@@ -6,6 +6,7 @@
 #include "memlayout.h"
 #include "mmu.h"
 #include "proc.h"
+#include "pstat.h"
 
 int
 sys_fork(void)
@@ -88,4 +89,18 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+extern void fillpstat(pstatTable *);
+
+int
+sys_getpinfo(void)
+{
+  pstatTable *pst;
+  int err = argptr(0, (void*)&pst, sizeof(*pst));
+  if (err < 0) {
+    return -1;
+  }
+  fillpstat(pst);
+  return 0;
 }

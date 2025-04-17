@@ -6,6 +6,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "pstat.h"
 
 struct {
   struct spinlock lock;
@@ -111,6 +112,8 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
+  //p->ticks = 0;
+  //p->tickets = 10;
 
   return p;
 }
@@ -138,6 +141,8 @@ userinit(void)
   p->tf->eflags = FL_IF;
   p->tf->esp = PGSIZE;
   p->tf->eip = 0;  // beginning of initcode.S
+  p->ticks = 0;
+  p->tickets = 10;
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
@@ -199,6 +204,13 @@ fork(void)
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
+  
+  np->ticks = 0;
+  if (curproc->tickets > 10) {
+    np->tickets = curproc->tickets;
+  } else {
+	  np->tickets = 10;
+  }
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -531,4 +543,36 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+void
+fillpstat(pstatTable *pstat)
+{
+  struct proc *p;
+  int i;
+
+  acquire(&ptable.lock);
+
+  for (i = 0; i < NPROC; i++) {
+    p = &ptable.proc[i];
+    if (p->state == UNUSED) {
+      continue;
+    }
+    (*pstat)[i].inuse = 1;
+    (*pstat)[i].tickets = p->tickets;
+    (*pstat)[i].ticks = p->ticks;
+    (*pstat)[i].pid = p->pid;
+    switch (p->state) {
+      case EMBRYO:  (*pstat)[i].state = 'E'; break;
+      case SLEEPING:(*pstat)[i].state = 'S'; break;
+      case RUNNABLE:(*pstat)[i].state = 'A'; break;
+      case RUNNING: (*pstat)[i].state = 'R'; break;
+      case ZOMBIE:  (*pstat)[i].state = 'Z'; break;
+      default:      (*pstat)[i].state = '?';
+    }
+    safestrcpy((*pstat)[i].name, p->name, sizeof((*pstat)[i].name));
+    
+  }
+
+  release(&ptable.lock);
 }

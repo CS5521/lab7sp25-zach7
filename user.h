@@ -37,3 +37,16 @@ void* memset(void*, int, uint);
 void* malloc(uint);
 void free(void*);
 int atoi(const char*);
+int getpinfo(void *p);
+void ps();
+
+typedef struct {
+    int inuse;
+    int tickets;
+    int pid;
+    int ticks;
+    char name[16];
+    char state;
+} pstat_t;
+
+typedef pstat_t pstatTable[64];

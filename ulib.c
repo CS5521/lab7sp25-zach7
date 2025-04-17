@@ -104,3 +104,22 @@ memmove(void *vdst, const void *vsrc, int n)
     *dst++ = *src++;
   return vdst;
 }
+
+void
+ps()
+{
+  pstatTable pstat;
+  int i;
+  if (getpinfo(&pstat) == 0) {
+    printf(1, "PID     TKTS    TCKS    STAT    NAME\n");
+    for (i = 0; i < 64; i++) {
+        if (pstat[i].inuse) {
+            printf(1, "%d       %d       %d       %c       %s\n",
+                   pstat[i].pid, pstat[i].tickets, pstat[i].ticks,
+                   pstat[i].state, pstat[i].name);
+        }
+    }
+} else {
+    printf(1, "getpinfo not working\n");
+}
+}
