@@ -323,6 +323,13 @@ wait(void)
   }
 }
 
+#define RAND_MAX ((1U << 31) - 1)
+static int rseed = 1898888478;
+int random()
+{
+   return rseed = (rseed * 1103515245 + 12345) & RAND_MAX;
+}
+
 //PAGEBREAK: 42
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
@@ -344,23 +351,36 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
+    int ticketsTotal = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
-
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
-
-      swtch(&(c->scheduler), p->context);
-      switchkvm();
-
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
-      c->proc = 0;
+      if(p->state == RUNNABLE)
+      {
+        ticketsTotal += p->tickets;
+      }
+    }
+    if (ticketsTotal > 0)
+    {
+      int ticketWin = random() % ticketsTotal + 1;
+      int count = 0;
+      for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+      {
+        if (p->state != RUNNABLE)
+        {
+          continue;
+        }
+        count += p->tickets;
+        if (count >= ticketWin)
+        {
+          c->proc = p;
+          switchuvm(p);
+          p->state = RUNNING;
+          p->ticks++;
+          swtch(&(c->scheduler), p->context);
+          switchkvm();
+          c->proc = 0;
+          break;
+        }
+      }
     }
     release(&ptable.lock);
 

@@ -104,3 +104,16 @@ sys_getpinfo(void)
   fillpstat(pst);
   return 0;
 }
+
+int
+sys_settickets(void)
+{
+  int n;
+  int err = argint(0, &n);
+  if (err < 0 || n < 10)
+  {
+    return -1;
+  }
+  myproc()->tickets = n;
+  return 0;
+}
